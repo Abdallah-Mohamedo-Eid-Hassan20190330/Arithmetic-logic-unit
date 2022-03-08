@@ -1,0 +1,161 @@
+
+`define NUM_BITS 6 // Try 1, 2, 3, 4, 5
+
+
+module hulf_adder(sum,carry,x,z);
+   input x ,z;
+   output sum,carry;
+   xor(sum,x,z);
+   and(carry,x,z);
+endmodule
+////////////////////////////////////////////////////////////////////////////////////
+module full_adder(sum,carry,z,x,y);
+  input x,z,y;
+  output sum,carry;
+  wire s1 ,c1,c2;
+  hulf_adder h1(s1,c2,z,x);
+  hulf_adder h2(sum,c1,s1,y);
+  or(carry,c1,c2);
+endmodule
+////////////////////////////////////////////////////////////////////////////////////////////
+module adder_subtract(output [N:0]sum,output[N:0]carry,input[N:0]a,input[N:0]b,input m);
+   parameter N = `NUM_BITS;
+//  input m;
+  wire[N-1:0] s;
+  xor(s[0],b[0],m);
+  full_adder f(sum[0],carry[0],a[0],s[0],m);
+  generate
+  genvar i ; 
+  for ( i = 1 ; i < N ; i = i + 1 ) 
+  begin 
+  xor(s[i],b[i],m);
+  full_adder f1(sum[i],carry[i],a[i],s[i],carry[i-1]);
+  end 
+  endgenerate
+endmodule
+////////////////////////////////////////////////////////////////////////////////////////////
+module Bitwise_ANDing(output[N:0]sum,input[N:0]a,input[N:0]b);
+  parameter N =`NUM_BITS;
+  generate
+  genvar i ; 
+  for ( i = 0 ; i < N ; i = i + 1 ) 
+  begin 
+  and(sum[i],a[i],b[i]);
+  end
+  endgenerate
+endmodule
+/////////////////////////////////////////////////////////////////////////////////////////////
+module Bitwise_ORing(sum,a,b);
+   parameter N = `NUM_BITS;
+  input [N-1:0]a,b;
+  output[N-1:0] sum;
+  generate
+  genvar i ; 
+  for ( i = 0 ; i < N ; i = i + 1 ) 
+  begin
+  or(sum[i],a[i],b[i]);
+  end
+  endgenerate
+endmodule
+/////////////////////////////////////////////////////////////////////////////////////////////
+module Bitwise_XORing(sum,a,b);
+   parameter N = `NUM_BITS;
+ input [N-1:0]a,b;
+ output[N-1:0] sum;
+ generate
+ genvar i ; 
+ for ( i = 0 ; i < N ; i = i + 1 ) 
+ begin
+ xor(sum[i],a[i],b[i]);
+ end
+ endgenerate
+endmodule
+/////////////////////////////////////////////////////////////////////////////////////////////
+module Arithmetic_shifting_right(Q, D);
+   parameter N = `NUM_BITS;
+ input[N-1:0] D;
+ output[N-1:0] Q;
+ buf(Q[N-1], D[N-1]);
+ generate
+ genvar i; 
+ for ( i = N -1 ; i >0 ; i = i - 1 )
+ begin
+ buf(Q[i-1], D[i]);
+ end
+ endgenerate
+endmodule
+//////////////////////////////////////////////////////////////////////////////////////////////////
+module incriment_decriment(sum,carry,a,b,m);
+   parameter N = `NUM_BITS;
+  input[N-1:0]a;
+  input m,b;
+  output[N-1:0]sum,carry;
+  wire[N-1:0] s;
+    xor(s[0],b,m);
+  full_adder f(sum[0],carry[0],a[0],s[0],m);
+  generate
+  genvar i;
+  for (i = 1 ; i <N ; i = i +1 )
+  begin   
+  xor(s[i],b,m);
+  full_adder f(sum[i],carry[i],a[i],s[i],carry[i-1]);
+  end 
+  endgenerate
+endmodule
+module mux(o,s1,s2,s3,z1,z2,z3,z4,z5,z6,z7,z8);
+    input s1,s2,s3,z1,z2,z3,z4,z5,z6,z7,z8;
+    output o;
+    wire n1,n2,n3;
+    not(n1,s1);
+    not(n2,s2);
+    not(n3,s3);
+    wire [7:0] w;
+    and(w[0],z1,n1,n2,n3);
+    and(w[1],z2,n3,n2,s1);
+    and(w[2],z3,n3,s2,n1);
+    and(w[3],z4,n3,s2,s1);
+    and(w[4],z5,s3,n2,n1);
+    and(w[5],z6,s3,n2,s1);
+    and(w[6],z7,s3,s2,n1);
+    and(w[7],z8,s3,s2,s1);
+    or(o,w[1],w[0],w[2],w[3],w[4],w[5],w[6],w[7]);
+endmodule
+
+module main();
+   parameter N = `NUM_BITS;
+
+ reg[N-1:0] x,z;
+ wire s3=0,s2=1,s1=1,c=0;
+ wire c1;
+ wire[N-1:0] carry1,carry2,carry3,carry4,sum1,sum2,sum3,sum4,sum5,sum6,sum7,sum8,out;
+ initial
+ begin
+  x=6'b11011;
+  z=6'b01001;
+ end
+ adder_subtract ADD(sum5,carry1,x,z,s1);
+ adder_subtract SUB(sum6,carry2,x,z,s1);
+ Bitwise_ORing OR(sum2,x,z);
+ Bitwise_ANDing AND(sum1,x,z);
+ Bitwise_XORing XOR(sum7,x,z);
+ Arithmetic_shifting_right sh(sum8,x);
+ incriment_decriment d(sum3,carry3,x,s2,s1);
+ incriment_decriment in(sum4,carry4,x,s2,s1);
+ generate
+ genvar i ; 
+ for (i = 0 ; i < N ; i = i+1)
+ begin
+ mux m1(out[i],s1,s2,s3,sum1[i],sum2[i],sum3[i],sum4[i],sum5[i],sum6[i],sum7[i],sum8[i]);
+ end
+ endgenerate
+ mux m5(c1,s1,s2,s3,c,c,carry3[3],carry4[3],carry1[3],carry2[3],c,c);
+ initial
+  begin
+  if (N==2) $monitor(" carry=%b, A=%b",c1,out[1],out[0]);
+  if (N==3) $monitor(" carry=%b, A=%b",c1,out[2],out[1],out[0]);
+   if(N==4) $monitor(" carry=%b, A=%b",c1, out[3],out[2],out[1],out[0]);
+   if(N==5) $monitor(" carry=%b, A=%b",c1, out[4],out[3],out[2],out[1],out[0]);
+   if (N==6) $monitor(" carry=%b, A=%b",c1,out[5], out[4],out[3],out[2],out[1],out[0]);
+  end 
+endmodule
+
